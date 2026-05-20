@@ -1,0 +1,87 @@
+[
+  {
+    "id": "eval-keyvault-001",
+    "category": "key-vault",
+    "prompt": "I need a private Key Vault for our application 'orders' in resource group rg-orders. Use the AzAPI provider. The vault should be reachable only from our VNet vnet-app via a private endpoint in subnet pe-subnet, and only managed identities should be able to read secrets.",
+    "assertions": [
+      { "type": "must_contain",     "value": "azapi_resource",                              "description": "Uses AzAPI provider" },
+      { "type": "must_not_contain", "value": "azurerm_key_vault",                           "description": "Does not use azurerm_key_vault" },
+      { "type": "must_contain",     "value": "Microsoft.KeyVault/vaults@",                  "description": "Pins API version on Key Vault type" },
+      { "type": "must_contain",     "value": "publicNetworkAccess",                         "description": "Sets publicNetworkAccess explicitly" },
+      { "type": "must_contain",     "value": "\"Disabled\"",                                "description": "Disables public network access" },
+      { "type": "must_contain",     "value": "enableRbacAuthorization",                     "description": "Uses RBAC, not access policies" },
+      { "type": "must_contain",     "value": "Microsoft.Network/privateEndpoints@",         "description": "Creates a Private Endpoint" },
+      { "type": "must_contain",     "value": "privatelink.vaultcore.azure.net",             "description": "Uses correct private DNS zone" }
+    ],
+    "covers": ["Microsoft.KeyVault/vaults"],
+    "introduced_by": "initial",
+    "last_updated": "2026-05-10"
+  },
+  {
+    "id": "eval-storage-001",
+    "category": "storage",
+    "prompt": "Create a private storage account for blob storage in resource group rg-data. Use AzAPI. Apps should authenticate using their managed identity, not access keys.",
+    "assertions": [
+      { "type": "must_contain",     "value": "azapi_resource",                              "description": "Uses AzAPI provider" },
+      { "type": "must_not_contain", "value": "azurerm_storage_account",                     "description": "Does not use azurerm_storage_account" },
+      { "type": "must_contain",     "value": "Microsoft.Storage/storageAccounts@",          "description": "Pins API version" },
+      { "type": "must_contain",     "value": "\"Disabled\"",                                "description": "Disables public network access" },
+      { "type": "must_contain",     "value": "allowSharedKeyAccess",                        "description": "References the shared key setting" },
+      { "type": "must_not_match_regex", "value": "allowSharedKeyAccess\\s*=\\s*true",       "description": "Does NOT enable shared key access" },
+      { "type": "must_contain",     "value": "privatelink.blob.core.windows.net",           "description": "Uses correct blob private DNS zone" }
+    ],
+    "covers": ["Microsoft.Storage/storageAccounts"],
+    "introduced_by": "initial",
+    "last_updated": "2026-05-10"
+  },
+  {
+    "id": "eval-postgres-001",
+    "category": "postgresql",
+    "prompt": "Set up a private PostgreSQL Flexible Server for the orders service in subnet pg-subnet of vnet vnet-app. Resource group rg-data. Use AzAPI.",
+    "assertions": [
+      { "type": "must_contain",     "value": "azapi_resource",                                            "description": "Uses AzAPI provider" },
+      { "type": "must_not_contain", "value": "azurerm_postgresql",                                        "description": "Does not use azurerm postgres" },
+      { "type": "must_contain",     "value": "Microsoft.DBforPostgreSQL/flexibleServers@",                "description": "Pins API version" },
+      { "type": "must_contain",     "value": "delegatedSubnetResourceId",                                 "description": "Uses VNet injection (not PE)" },
+      { "type": "must_contain",     "value": "privateDnsZoneArmResourceId",                               "description": "Links private DNS zone" },
+      { "type": "must_not_contain", "value": "Microsoft.Network/privateEndpoints",                        "description": "Does NOT use Private Endpoint for postgres flexible" }
+    ],
+    "covers": ["Microsoft.DBforPostgreSQL/flexibleServers"],
+    "introduced_by": "initial",
+    "last_updated": "2026-05-10"
+  },
+  {
+    "id": "eval-containerapps-001",
+    "category": "container-apps",
+    "prompt": "Deploy a container app called 'orders-api' to a private Container Apps environment. Internal-only. Resource group rg-app, subnet cae-subnet of vnet vnet-app. Use AzAPI.",
+    "assertions": [
+      { "type": "must_contain",     "value": "azapi_resource",                                "description": "Uses AzAPI provider" },
+      { "type": "must_contain",     "value": "Microsoft.App/managedEnvironments@",            "description": "Pins API version on environment" },
+      { "type": "must_contain",     "value": "Microsoft.App/containerApps@",                  "description": "Pins API version on container app" },
+      { "type": "must_contain",     "value": "internal",                                      "description": "References internal-only setting" },
+      { "type": "must_match_regex", "value": "internal\\s*=\\s*true",                         "description": "Sets internal = true on environment" },
+      { "type": "must_match_regex", "value": "external\\s*=\\s*false",                        "description": "Sets ingress.external = false on container app" },
+      { "type": "must_not_contain", "value": "Microsoft.Network/privateEndpoints",            "description": "Does NOT use Private Endpoint for Container Apps" }
+    ],
+    "covers": ["Microsoft.App/managedEnvironments", "Microsoft.App/containerApps"],
+    "introduced_by": "initial",
+    "last_updated": "2026-05-10"
+  },
+  {
+    "id": "eval-cosmos-001",
+    "category": "cosmos-db",
+    "prompt": "Create a private Cosmos DB account (SQL API) in resource group rg-data. Apps must authenticate via managed identity only. Reachable only via private endpoint in subnet pe-subnet of vnet vnet-app. Use AzAPI.",
+    "assertions": [
+      { "type": "must_contain",     "value": "azapi_resource",                              "description": "Uses AzAPI provider" },
+      { "type": "must_not_contain", "value": "azurerm_cosmosdb",                            "description": "Does not use azurerm cosmosdb" },
+      { "type": "must_contain",     "value": "Microsoft.DocumentDB/databaseAccounts@",      "description": "Pins API version" },
+      { "type": "must_contain",     "value": "disableLocalAuth",                            "description": "References local-auth setting" },
+      { "type": "must_match_regex", "value": "disableLocalAuth\\s*=\\s*true",               "description": "Disables local auth (forces Entra ID)" },
+      { "type": "must_contain",     "value": "\"Disabled\"",                                "description": "Disables public network access" },
+      { "type": "must_contain",     "value": "privatelink.documents.azure.com",             "description": "Uses correct Cosmos SQL private DNS zone" }
+    ],
+    "covers": ["Microsoft.DocumentDB/databaseAccounts"],
+    "introduced_by": "initial",
+    "last_updated": "2026-05-10"
+  }
+]

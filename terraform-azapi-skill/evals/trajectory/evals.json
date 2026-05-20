@@ -1,0 +1,99 @@
+[
+  {
+    "id": "traj-orders-platform-001",
+    "category": "cross-cutting",
+    "prompt": "Design and produce a Terraform specification for a complete private 'orders' platform on Azure. The platform consists of: a Container App hosting the orders API (internal-only), a PostgreSQL Flexible Server for order data, a Cosmos DB account (SQL API) for the order events stream, a Storage Account for invoice blobs, a Key Vault for all secrets, and Application Insights wired to a Log Analytics workspace. Everything must be private: no public network access on any resource, all PaaS reachable only via Private Endpoint or VNet injection as appropriate, all auth via managed identity. Output Terraform code that an engineer could review for completeness and correctness. Organize the code clearly. You may use multiple files or a single file; choose what's most reviewable.",
+    "rubric": [
+      {
+        "dimension": "azapi_only",
+        "weight": 0.20,
+        "criteria": "All resources use azapi_resource. The only acceptable azurerm usage is data.azurerm_client_config. No azurerm_* resources anywhere."
+      },
+      {
+        "dimension": "private_networking_complete",
+        "weight": 0.25,
+        "criteria": "Every PaaS resource has publicNetworkAccess = Disabled (or equivalent for that resource type). Key Vault, Storage, Cosmos DB use Private Endpoints with the correct privatelink DNS zone. PostgreSQL uses VNet injection (not PE). Container Apps environment is internal-only (vnetConfiguration.internal = true). Every Private Endpoint has a corresponding Private DNS Zone with VNet link."
+      },
+      {
+        "dimension": "auth_correctness",
+        "weight": 0.20,
+        "criteria": "Storage has allowSharedKeyAccess = false. Cosmos DB has disableLocalAuth = true. Key Vault has enableRbacAuthorization = true. Container App has a managed identity. Role assignments exist linking the Container App's identity to Key Vault (Secrets User), Storage (Blob/Queue/Table Data Contributor), and Cosmos DB (Built-in Data Contributor)."
+      },
+      {
+        "dimension": "api_version_discipline",
+        "weight": 0.10,
+        "criteria": "Every azapi_resource type string includes an explicit @YYYY-MM-DD API version pin. No omitted versions. Versions are plausible (not fabricated)."
+      },
+      {
+        "dimension": "completeness",
+        "weight": 0.15,
+        "criteria": "All six services in the scenario are present (Container App, Postgres, Cosmos, Storage, Key Vault, App Insights + Log Analytics). The Container App is wired to App Insights via APPLICATIONINSIGHTS_CONNECTION_STRING. Log Analytics is the workspace backing App Insights. Diagnostic settings exist for at least Key Vault and Storage."
+      },
+      {
+        "dimension": "coherence",
+        "weight": 0.10,
+        "criteria": "Variable, output, and reference names are consistent. Cross-resource references actually resolve (e.g., the role assignment references the same identity output that the Container App exposes). The code reads as a coherent module a senior engineer would accept."
+      }
+    ],
+    "passing_score": 4.0,
+    "covers": [
+      "Microsoft.App/managedEnvironments",
+      "Microsoft.App/containerApps",
+      "Microsoft.DBforPostgreSQL/flexibleServers",
+      "Microsoft.DocumentDB/databaseAccounts",
+      "Microsoft.Storage/storageAccounts",
+      "Microsoft.KeyVault/vaults",
+      "Microsoft.Insights/components",
+      "Microsoft.OperationalInsights/workspaces"
+    ],
+    "introduced_by": "initial",
+    "last_updated": "2026-05-10"
+  },
+  {
+    "id": "traj-event-pipeline-001",
+    "category": "cross-cutting",
+    "prompt": "Produce a Terraform specification for a private event ingestion pipeline: an Event Grid Topic receives events from internal publishers, fans them out to an Event Hub (for streaming consumers) and to a Storage queue (for batch processors). All resources are private. All auth is Entra ID — no shared keys, no SAS, no local auth. The dead-letter destination for the Event Grid subscription is a blob container on the Storage Account. Use AzAPI.",
+    "rubric": [
+      {
+        "dimension": "azapi_only",
+        "weight": 0.20,
+        "criteria": "All resources use azapi_resource."
+      },
+      {
+        "dimension": "private_networking_complete",
+        "weight": 0.25,
+        "criteria": "Event Grid Topic, Event Hubs Namespace, and Storage Account all have publicNetworkAccess = Disabled. Each has a Private Endpoint with the correct DNS zone (privatelink.eventgrid.azure.net, privatelink.servicebus.windows.net, privatelink.queue.core.windows.net and privatelink.blob.core.windows.net for the storage queue and dead-letter blob)."
+      },
+      {
+        "dimension": "auth_correctness",
+        "weight": 0.25,
+        "criteria": "Event Grid Topic has disableLocalAuth = true. Event Hubs Namespace has disableLocalAuth = true. Storage Account has allowSharedKeyAccess = false. Role assignments exist for the Event Grid subscription's identity to write to the Event Hub and to the Storage blob/queue."
+      },
+      {
+        "dimension": "wiring_correctness",
+        "weight": 0.15,
+        "criteria": "The Event Grid subscription targets the Event Hub correctly (destination.endpointType = EventHub, with the right resourceId). The dead-letter destination points to a specific blob container on the storage account. Event delivery schema is consistent across producer and subscription."
+      },
+      {
+        "dimension": "api_version_discipline",
+        "weight": 0.05,
+        "criteria": "Every azapi_resource type has an explicit API version pin."
+      },
+      {
+        "dimension": "coherence",
+        "weight": 0.10,
+        "criteria": "References resolve. Variables are named consistently. The module reads as something a reviewer would accept."
+      }
+    ],
+    "passing_score": 4.0,
+    "covers": [
+      "Microsoft.EventGrid/topics",
+      "Microsoft.EventGrid/eventSubscriptions",
+      "Microsoft.EventHub/namespaces",
+      "Microsoft.EventHub/namespaces/eventhubs",
+      "Microsoft.Storage/storageAccounts"
+    ],
+    "introduced_by": "initial",
+    "last_updated": "2026-05-10"
+  }
+]
