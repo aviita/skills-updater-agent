@@ -19,7 +19,7 @@ This repository contains an **automated, multi-agent pipeline** that keeps the `
 1. **Ingests** any new source — a Confluence ADR, an Azure release-notes page, a doc update, or an advisory — and snapshots it with a stable, version-pinned reference.
 2. **Updates** the skill files surgically, proposing only the minimum changes that faithfully reflect the new information while preserving every non-negotiable default (AzAPI-only, zero public network access, private endpoints mandatory for all PaaS, explicit API version pins on every resource).
 3. **Reviews** the proposed diff independently, checking for scope creep, conflicting ADRs, invalid API versions, and changelog hygiene — with a structured retry loop before escalating to a human.
-4. **Tests** the updated skill by proposing and running targeted evals: simple deterministic assertion tests for specific rule coverage, and trajectory rubric-scored scenario tests for complex multi-resource patterns.
+4. **Tests** the updated skill by proposing and running targeted evals: simple deterministic assertion tests for specific rule coverage, and trajectory rubric-scored scenario tests with LLM-as-a-Judge methodology for complex multi-resource patterns.
 
 The output is a single branch with four atomic commits — one per stage — ready for human PR review. The human reviews a well-scoped diff with a changelog entry and passing eval results, rather than a sprawling manual edit.
 
